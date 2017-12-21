@@ -55,7 +55,7 @@ def request_macaroon():
     response = requests.request(
         url='https://dashboard.snapcraft.io/dev/api/acl/',
         method='POST',
-        json={'permissions': ['package_access']},
+        json={'permissions': ['package_access', 'package_upload']},
         headers={
             'Accept': 'application/json, application/hal+json',
             'Content-Type': 'application/json',
@@ -143,9 +143,9 @@ def verify_response(
         )
 
         return {
-            status_code: 307,
-            redirect: url_calling,
-            reason: 'Macaroon discharge refreshed'
+            'status_code': 307,
+            'redirect': url_calling,
+            'reason': 'Macaroon discharge refreshed'
         }
 
     if response.status_code > 400:
@@ -159,21 +159,23 @@ def verify_response(
         if verified['account'] is None:
             empty_session(session)
             return {
-                status_code: 307,
-                redirect: url_login,
-                reason: 'Need login'
+                'status_code': 307,
+                'redirect': url_login,
+                'reason': 'Need login'
             }
 
         # Not authorized content
         if response.status_code == 401 and not verified['allowed']:
             return {
-                status_code: 401,
-                reason: 'Not authorized'
+                'status_code': 401,
+                'redirect': None,
+                'reason': 'Not authorized'
             }
 
         # The package doesn't exist
         if verified['account'] is not None and response.status_code == 404:
             return {
-                status_code: 404,
-                reason: 'Not found'
+                'status_code': 404,
+                'redirect': None,
+                'reason': 'Not found'
             }

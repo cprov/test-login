@@ -1,8 +1,11 @@
+import datetime
 import flask
+from flask_openid import OpenID
 import requests
+
 import authentication
 from macaroon import MacaroonRequest, MacaroonResponse
-from flask_openid import OpenID
+
 
 app = flask.Flask(__name__)
 app.config.update(
@@ -88,18 +91,78 @@ def get_account():
     )
 
     if verified_response is not None:
-        if verify_response['redirect'] is None:
-            return response.raise_for_status
-        else:
-            return flask.redirect(
-                validate_response.redirect
-            )
+        if verified_response['redirect'] is None:
+            response.raise_for_status()
+        return flask.redirect(verified_response.redirect)
 
-    print('HTTP/1.1 {} {}'.format(response.status_code, response.reason))
+    context = {
+        'account': response.json()
+    }
 
-    return "<h1>Developer Account</h1><p>{}</p>".format(
-        str(response.json())
+    return flask.render_template('account.html', **context)
+
+
+@app.route('/snaps/<snap_name>')
+def get_snap(snap_name):
+    if not authentication.is_authenticated(flask.session):
+        return redirect_to_login()
+
+    authorization = authentication.get_authorization_header(
+        flask.session['macaroon_root'],
+        flask.session['macaroon_discharge']
     )
+
+    headers = {
+        'X-Ubuntu-Series': '16',
+        'X-Ubuntu-Architecture': 'amd64',
+        'Authorization': authorization
+    }
+
+    url = 'https://api.snapcraft.io/api/v1/snaps/details/{}'.format(snap_name)
+    response = requests.request(url=url, method='GET', headers=headers)
+    verified_response = authentication.verify_response(
+        response,
+        flask.session,
+        url,
+        '/snaps/{}'.format(snap_name),
+        '/login'
+    )
+    if verified_response is not None:
+        if verified_response['redirect'] is None:
+            response.raise_for_status()
+        return flask.redirect(verified_response.redirect)
+
+    details = response.json()
+
+    snap_id = details['snap_id']
+    url = 'https://dashboard.snapcraft.io/dev/api/snaps/metrics'
+    yesterday = datetime.datetime.today() - datetime.timedelta(days=1)
+    month_ago = yesterday -  datetime.timedelta(days=30)
+    data = {
+        "filters": [
+            {"metric_name": "installed_base_by_channel",
+             "snap_id": snap_id,
+             "start": month_ago.strftime('%Y-%m-%d'),
+             "end": yesterday.strftime('%Y-%m-%d')},
+            {"metric_name": "installed_base_by_operating_system",
+             "snap_id": snap_id,
+             "start": month_ago.strftime('%Y-%m-%d'),
+             "end": yesterday.strftime('%Y-%m-%d')},
+            {"metric_name": "installed_base_by_version",
+             "snap_id": snap_id,
+             "start": month_ago.strftime('%Y-%m-%d'),
+             "end": yesterday.strftime('%Y-%m-%d')},
+        ]
+    }
+    response = requests.request(url=url, method='POST', json=data, headers=headers)
+    metrics = response.json()
+
+    context = {
+        'details': details,
+        'metrics': metrics,
+    }
+
+    return flask.render_template('details.html', **context)
 
 
 @app.route('/logout')

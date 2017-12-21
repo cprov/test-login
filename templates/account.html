@@ -1,0 +1,20 @@
+<h1>Account information for {{ account.short_namespace }}</h1>
+
+<dl>
+  <dt>Username</dt>
+  <dd> - {{ account.short_namespace }}</dd>
+  <dt>OpenID</dt>
+  <dd>- {{ account.openid_identifier }}</dd>
+</dl>
+
+<h2>Snaps</h2>
+
+<ul>
+{% for snap_name, snap_info in account.snaps["16"].items() %}
+  {% if snap_name != "null" %}
+  <li><a href="/snaps/{{ snap_name }}">{{ snap_name }}</a>
+      ({{ snap_info["snap-id"] }})</li>
+  {% endif %}
+{% endfor %}
+</ul>
+

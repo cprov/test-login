@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Details for {{ details.package_name }}</title>
+    <meta charset="utf-8" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.18/c3.min.js"></script>
+</head>
+<body>
+
+<h1>Details for {{ details.package_name }}</h1>
+
+
+<h2>Installed base by channel</h2>
+<div id="chart_installed_base_by_channel"></div>
+
+<h2>Installed base by version</h2>
+<div id="chart_installed_base_by_version"></div>
+
+<h2>Installed base by operating system</h2>
+<div id="chart_installed_base_by_operating_system"></div>
+
+
+<script>
+  var metrics = {{ metrics.metrics|tojson }};
+
+  var charts = {}
+  for (m of metrics) {
+    var chart_data = { 'x': m.buckets };
+    for (s of m.series) {
+      chart_data[s.name] = s.values;
+    }
+    charts[m.metric_name] = c3.generate({
+       bindto: '#chart_' + m.metric_name,
+       size: {
+        height: 200
+       },
+       data: {
+         type: 'bar',
+         x: 'x',
+         json: chart_data
+      },
+      axis: {
+        x: {
+          type: 'timeseries',
+          tick: {
+            format: '%Y-%m-%d'
+          }
+        }
+      }
+    });
+  }
+    
+</script>
+
+</body>
+</html>
